@@ -1,6 +1,7 @@
 const expressasyncHandler = require('express-async-handler');
 const admin = require('../config/firebaseAdmin');
 const db = admin.firestore();
+const axios = require('axios');
 require('dotenv').config();
 
 const sign_up = expressasyncHandler(async (req, res) => {
@@ -50,8 +51,8 @@ const sign_in = expressasyncHandler(async (req, res) => {
             res.status(200).json({message: "User signed in successfully", uid: localId, idToken, refreshToken});
     }
     catch (error) {
-        console.log(error.response.data);
-        const errorMessage = error.response.data.error.message;
+        console.log("Firebase login error:", error?.response?.data || error);
+        const errorMessage = error?.response?.data?.error?.message;
         if(errorMessage === 'EMAIL_NOT_FOUND' || errorMessage === 'INVALID_PASSWORD'){
             res.status(400);
             throw new Error("Invalid email or password");
