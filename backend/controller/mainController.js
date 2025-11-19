@@ -21,7 +21,7 @@ const register = expressasyncHandler(async (req, res) => {
         const uid = req.user.uid;
         await db.collection('users').doc(uid).update({
             palmdata:palmdata,
-            updatedAt: admin.firestore.Fieldvalue.serverTimestamp()
+            updatedAt: admin.firestore.FieldValue.serverTimestamp()
         });
         res.status(200).json({message: "Palm data registered successfully"});
     } catch (error) {
@@ -57,11 +57,11 @@ const verify = expressasyncHandler(async (req, res) => {
 
         const liveTensor = new ort.Tensor("float32", liveFlat, [1, inputSize]);
         const storedTensor = new ort.Tensor("float32", storedFlat, [1, inputSize]);
-        const liveOutput = await session.run({ input: liveTensor });
-        const storedOutput = await session.run({ input: storedTensor });
+        const liveOutput = await session.run({ input_rebuild: liveTensor });
+        const storedOutput = await session.run({ input_rebuild: storedTensor });
 
-        const liveEmb = liveOutput.output.data;
-        const storedEmb = storedOutput.output.data;
+        const liveEmb = liveOutput["dense"].data;
+        const storedEmb = storedOutput["dense"].data;
         const similarity = cosineSimilarity(liveEmb, storedEmb);
 
         const threshold = 0.85;
