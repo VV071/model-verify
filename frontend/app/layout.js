@@ -5,11 +5,10 @@ import Navbar from '../components/Navbar'
 
 export default function RootLayout({ children }) {
   const pathname = usePathname()
-  // show navbar on all pages except '/'
-  const showNav = pathname !== '/'
+  const showNav = pathname !== '/' && pathname !== '/signup'
 
   return (
-    <html>
+    <html lang="en">
       <body className="min-h-screen">
         {showNav && <Navbar/>}
         <main className="min-h-screen flex items-center justify-center p-6">

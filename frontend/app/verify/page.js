@@ -1,57 +1,56 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import useHands from '../../hooks/useHands'
 import CameraCanvas from '../../components/CameraCanvas'
-import { useRouter } from 'next/navigation'
-
-function euclidean(a,b){
-  if(!a||!b) return Infinity
-  let s=0
-  for(let i=0;i<a.length;i++){
-    const d = (a[i]||0)-(b[i]||0)
-    s += d*d
-  }
-  return Math.sqrt(s)
-}
+import { api } from '../../lib/api'
+import { clearStoredSession, getStoredSession } from '../../lib/auth'
 
 export default function VerifyPage(){
-  const { videoRef, canvasRef, embedding, isInside, captureEmbedding } = useHands()
-  const [result, setResult] = useState(null)
-  const [distance,setDistance] = useState(null)
+  const { videoRef, canvasRef, isInside, captureEmbedding } = useHands()
   const router = useRouter()
-  const threshold = 0.15
+  const [token,setToken] = useState(null)
+  const [result,setResult] = useState(null)
+  const [similarity,setSimilarity] = useState(null)
+  const [threshold,setThreshold] = useState(null)
+  const [error,setError] = useState('')
+  const [loading,setLoading] = useState(false)
 
   useEffect(()=>{
-    const checkStored = () => {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('palmData')
-        if(!saved) setResult('nostored')
-      }
-    }
-    checkStored()
-  },[])
-
-  const handleCheck = ()=>{
-    if (typeof window === 'undefined') return
-    
-    const savedRaw = localStorage.getItem('palmData')
-    if(!savedRaw){
-      setResult('nostored')
+    const session = getStoredSession()
+    if(!session?.token){
+      router.replace('/')
       return
     }
-    const saved = JSON.parse(savedRaw)
-    const storedEmb = saved.embedding
+    setToken(session.token)
+  },[router])
+
+  const handleCheck = async ()=>{
+    setError('')
+    setResult(null)
+    if(!token){
+      router.replace('/')
+      return
+    }
     const current = captureEmbedding()
     if(!current){
-      alert('No palm detected. Try again.')
+      setError('No palm detected. Make sure your hand is inside the box.')
       return
     }
-    const d = euclidean(current, storedEmb)
-    setDistance(d)
-    if(d < threshold){
-      setResult('match')
-    } else {
-      setResult('nomatch')
+    try{
+      setLoading(true)
+      const data = await api.verifyPalm(token, current)
+      setSimilarity(data.similarity)
+      setThreshold(data.threshold)
+      setResult(data.verified ? 'match' : 'nomatch')
+    }catch(err){
+      setError(err.message)
+      if(err.message.toLowerCase().includes('unauthorized')){
+        clearStoredSession()
+        router.replace('/')
+      }
+    }finally{
+      setLoading(false)
     }
   }
 
@@ -60,15 +59,25 @@ export default function VerifyPage(){
       <div className="bg-white p-8 rounded-2xl shadow-xl">
         <h1 className="text-3xl font-bold mb-2 text-gray-800">Verify Palm</h1>
         <p className="text-sm text-gray-600 mb-6">
-          Place palm in box and press &quot;Check&quot;. Threshold: {threshold}
+          Hold your palm steady inside the capture box and press &quot;Check&quot; to verify against the registered template.
         </p>
-        <CameraCanvas videoRef={videoRef} canvasRef={canvasRef} caption={isInside? 'Hand inside box - Ready to verify' : 'Place hand inside box'}/>
+        <CameraCanvas 
+          videoRef={videoRef} 
+          canvasRef={canvasRef} 
+          caption={isInside ? 'Hand inside box - Ready to verify' : 'Place hand inside box'}
+        />
+        {error && (
+          <div className="mt-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+            {error}
+          </div>
+        )}
         <div className="mt-6 flex gap-4 items-center justify-center flex-wrap">
           <button 
             onClick={handleCheck} 
-            className="px-6 py-3 bg-gray-900 text-white rounded-lg shadow-md hover:bg-gray-800 transition transform hover:scale-105"
+            disabled={loading}
+            className="px-6 py-3 bg-gray-900 text-white rounded-lg shadow-md hover:bg-gray-800 transition transform hover:scale-105 disabled:opacity-60 disabled:hover:scale-100"
           >
-            Check
+            {loading ? 'Verifying...' : 'Check'}
           </button>
           <button 
             onClick={()=>router.push('/home')} 
@@ -76,9 +85,9 @@ export default function VerifyPage(){
           >
             Go to Home
           </button>
-          {distance !== null && (
+          {similarity !== null && (
             <div className="px-4 py-2 bg-gray-100 rounded-lg text-sm font-mono text-gray-700">
-              Distance: {distance.toFixed(4)}
+              Similarity: {similarity.toFixed(3)} / Threshold: {(threshold ?? 0).toFixed(2)}
             </div>
           )}
         </div>
@@ -97,14 +106,6 @@ export default function VerifyPage(){
               <div className="text-center">
                 <div className="text-2xl font-bold text-red-700 mb-2">Match Not Found ❌</div>
                 <div className="text-sm text-red-600">Palm does not match the registered data.</div>
-              </div>
-            </div>
-          )}
-          {result === 'nostored' && (
-            <div className="p-6 rounded-xl border-4 border-yellow-400 bg-yellow-50 shadow-lg">
-              <div className="text-center">
-                <div className="text-xl font-bold text-yellow-800 mb-2">No Stored Data</div>
-                <div className="text-sm text-yellow-700">No stored palm data found. Please register first.</div>
               </div>
             </div>
           )}

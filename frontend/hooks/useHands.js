@@ -151,14 +151,20 @@ export default function useHands({onResults} = {}){
         // results.multiHandLandmarks may be undefined
         const lm = results.multiHandLandmarks && results.multiHandLandmarks[0] ? results.multiHandLandmarks[0] : null
         setLandmarks(lm)
-        const emb = computeEmbedding(lm)
-        setEmbedding(emb)
 
         // compute inside box (use video width/height)
         const vw = video.videoWidth || video.clientWidth || 640
         const vh = video.videoHeight || video.clientHeight || 480
         const inside = checkInsideBox(lm, vw, vh)
         setIsInside(inside)
+
+        let emb = null
+        if(inside){
+          emb = computeEmbedding(lm)
+          setEmbedding(emb)
+        }else{
+          setEmbedding(null)
+        }
 
         // draw on canvas
         ctx.clearRect(0,0,canvas.width,canvas.height)
@@ -269,8 +275,8 @@ export default function useHands({onResults} = {}){
 
   // capture function returns current embedding if inside and stable (caller decides)
   const captureEmbedding = useCallback(()=>{
-    return embedding
-  },[embedding])
+    return isInside ? embedding : null
+  },[embedding, isInside])
 
   // storage helpers
   const saveToLocal = useCallback((dataObj)=>{

@@ -1,34 +1,65 @@
 'use client'
 import {useEffect, useState} from 'react'
 import { useRouter } from 'next/navigation'
+import { api } from '../../lib/api'
+import { clearStoredSession, getStoredSession } from '../../lib/auth'
 
 export default function Home(){
   const router = useRouter()
-  const [palmExists,setPalmExists] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return !!localStorage.getItem('palmData')
-    }
-    return false
-  })
+  const [loading,setLoading] = useState(true)
+  const [profile,setProfile] = useState(null)
+  const [error,setError] = useState('')
 
   useEffect(()=>{
-    const checkPalmData = () => {
-      const data = localStorage.getItem('palmData')
-      setPalmExists(!!data)
+    const session = getStoredSession()
+    if(!session?.token){
+      router.replace('/')
+      return
     }
-    checkPalmData()
-  },[])
 
-  const handleDelete = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('palmData')
-      setPalmExists(false)
-      alert('Palm data deleted')
+    const fetchProfile = async () => {
+      try{
+        setLoading(true)
+        const data = await api.profile(session.token)
+        setProfile(data)
+      }catch(err){
+        setError(err.message)
+        clearStoredSession()
+        router.replace('/')
+      }finally{
+        setLoading(false)
+      }
     }
+    fetchProfile()
+  },[router])
+
+  if(loading){
+    return <div className="text-lg text-gray-600">Loading dashboard...</div>
   }
+
+  if(error){
+    return (
+      <div className="text-center">
+        <p className="text-red-600">{error}</p>
+        <button 
+          onClick={()=>router.replace('/')}
+          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg"
+        >
+          Return to sign in
+        </button>
+      </div>
+    )
+  }
+
+  const palmExists = Boolean(profile?.palmRegistered)
 
   return (
     <div className="w-full max-w-5xl mx-auto">
+      <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
+        <h1 className="text-3xl font-bold text-gray-800 mb-2">Welcome back, {profile?.name}</h1>
+        <p className="text-gray-600">Manage your palm identity and payment verification from one place.</p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start mb-8">
         <div className="bg-white p-8 rounded-2xl shadow-lg flex flex-col items-center justify-center min-h-[300px]">
           <h2 className="text-2xl font-semibold mb-6 text-gray-800">Register Palm</h2>
@@ -49,35 +80,28 @@ export default function Home(){
           <h2 className="text-2xl font-semibold mb-6 text-gray-800">Verify Palm</h2>
           <button
             onClick={()=>router.push('/verify')}
-            className="px-8 py-4 rounded-lg bg-gray-900 text-white shadow-lg hover:bg-gray-800 hover:scale-105 transition transform"
+            disabled={!palmExists}
+            className={`px-8 py-4 rounded-lg shadow-lg transition transform ${
+              palmExists
+                ? 'bg-gray-900 text-white hover:bg-gray-800 hover:scale-105'
+                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+            }`}
           >
             Verify Palm
           </button>
         </div>
       </div>
 
-      {palmExists && (
-        <div className="bg-white p-6 rounded-2xl shadow-lg">
-          <div className="flex flex-col items-center gap-4">
-            <div className="text-sm text-green-600 font-medium">✓ Saved palm data found in localStorage</div>
-            <button 
-              onClick={handleDelete} 
-              className="px-6 py-3 rounded-lg bg-red-500 text-white shadow-md hover:bg-red-600 transition transform hover:scale-105"
-            >
-              Delete Palm Data
-            </button>
+      <div className="bg-white p-6 rounded-2xl shadow-lg">
+        {palmExists ? (
+          <div className="text-sm text-green-600 font-medium">
+            ✓ Palm data stored securely in backend for this account.
           </div>
-        </div>
-      )}
-
-      {!palmExists && (
-        <div className="bg-white p-6 rounded-2xl shadow-lg">
-          <div className="text-sm text-gray-500 text-center">No palm data saved yet. Register your palm to get started.</div>
-        </div>
-      )}
-
-      <div className="mt-6 text-xs text-gray-400 text-center">
-        Palm embeddings saved to localStorage only (key: &quot;palmData&quot;). Uses MediaPipe Hands for landmark extraction.
+        ) : (
+          <div className="text-sm text-gray-500 text-center">
+            No palm data registered yet. Complete registration to enable contactless verification.
+          </div>
+        )}
       </div>
     </div>
   )
