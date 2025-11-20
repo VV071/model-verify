@@ -106,21 +106,5 @@ const profile = expressasyncHandler(async (req, res) => {
     }
 });
 
-const delete_palm = expressasyncHandler(async (req, res) => {
-    const uid=req.user.uid;
-    if(!uid){
-        res.status(401);
-        throw new Error("Unauthorized");
-    }
-    try {
-        const userdoc = db.collection('users').doc(uid);
-        await userdoc.update({palmdata:null});
-        res.status(200).json({message:"Palm data deleted successfully"});
-    }
-    catch(error) {
-        console.log(error);
-        res.status(500).json({message: "Internal Server Error"});
-    }
-});
 
-module.exports = {sign_in, sign_up, profile, delete_palm};
+module.exports = {sign_in, sign_up, profile};

@@ -40,7 +40,7 @@ export const api = {
     return request('/main/verify', { method: 'POST', token, body: { palmdata } });
   },
   deletePalm(token) {
-    return request('/main/register', { method: 'DELETE', token });
+    return request('/main/delete_palm', { method: 'DELETE', token });
   },
 };
 

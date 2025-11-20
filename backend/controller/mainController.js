@@ -89,26 +89,21 @@ const verify = expressasyncHandler(async (req, res) => {
     }
 });
 
-const deletePalm = expressasyncHandler(async (req, res) => {
+const delete_palm = expressasyncHandler(async (req, res) => {
+    const uid=req.user.uid;
+    if(!uid){
+        res.status(401);
+        throw new Error("Unauthorized");
+    }
     try {
-        console.log('DeletePalm request headers.authorization=', req.headers.authorization);
-        const uid = req.user.uid;
-        // clear the palmdata field (set to null) so frontend sees no data
-        await db.collection('users').doc(uid).set({
-            palmdata: null,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        // read back to confirm
-        const saved = await db.collection('users').doc(uid).get();
-        const savedData = saved.exists ? saved.data() : null;
-        console.log('DeletePalm: uid=', uid, 'savedPalmLength=', savedData?.palmdata?.length);
-
-        res.status(200).json({ message: 'Palm data deleted', saved: !!savedData, savedPalmLength: savedData?.palmdata?.length || 0 });
-    } catch (error) {
-        console.error('Error deleting palm data:', error);
-        res.status(500).json({ message: 'Internal Server Error' });
+        const userdoc = db.collection('users').doc(uid);
+        await userdoc.update({palmdata:null});
+        res.status(200).json({message:"Palm data deleted successfully"});
+    }
+    catch(error) {
+        console.log(error);
+        res.status(500).json({message: "Internal Server Error"});
     }
 });
 
-module.exports = { register, verify, deletePalm };
+module.exports = { register, verify, delete_palm };
