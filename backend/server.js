@@ -11,10 +11,19 @@ const port = 3002;
 
 app.use(bodyParser.json());
 app.use(express.json());
+// Allow local frontend origins during development
 app.use(cors({
-    origin: 'http://localhost:3000',
+    origin: function(origin, callback){
+        // allow requests with no origin (mobile apps, curl, postman)
+        if(!origin) return callback(null, true);
+        const allowed = ['http://localhost:3000','http://localhost:3001'];
+        if(allowed.indexOf(origin) !== -1){
+            return callback(null, true);
+        }
+        return callback(new Error('Not allowed by CORS'));
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type  ', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true
 }));
 

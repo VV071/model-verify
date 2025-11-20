@@ -39,5 +39,8 @@ export const api = {
   verifyPalm(token, palmdata) {
     return request('/main/verify', { method: 'POST', token, body: { palmdata } });
   },
+  deletePalm(token) {
+    return request('/main/register', { method: 'DELETE', token });
+  },
 };
 

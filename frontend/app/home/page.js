@@ -9,6 +9,7 @@ export default function Home(){
   const [loading,setLoading] = useState(true)
   const [profile,setProfile] = useState(null)
   const [error,setError] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(()=>{
     const session = getStoredSession()
@@ -51,7 +52,29 @@ export default function Home(){
     )
   }
 
-  const palmExists = Boolean(profile?.palmRegistered)
+  // backend stores the landmarks array on `palmdata` (or null).
+  // consider palm registered when `palmdata` is a non-empty array
+  const palmExists = Boolean(Array.isArray(profile?.palmdata) && profile.palmdata.length > 0)
+
+  const handleDelete = async () => {
+    const session = getStoredSession()
+    if(!session?.token) {
+      clearStoredSession()
+      router.replace('/')
+      return
+    }
+    if(!confirm('Delete stored palm data for this account?')) return
+    try{
+      setDeleting(true)
+      await api.deletePalm(session.token)
+      // reflect change in UI
+      setProfile(prev => ({...prev, palmdata: null}))
+    }catch(err){
+      alert('Failed to delete palm data: ' + err.message)
+    }finally{
+      setDeleting(false)
+    }
+  }
 
   return (
     <div className="w-full max-w-5xl mx-auto">
@@ -100,6 +123,17 @@ export default function Home(){
         ) : (
           <div className="text-sm text-gray-500 text-center">
             No palm data registered yet. Complete registration to enable contactless verification.
+          </div>
+        )}
+        {palmExists && (
+          <div className="mt-4 text-center">
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg"
+            >
+              {deleting ? 'Deleting...' : 'Delete Palm Data'}
+            </button>
           </div>
         )}
       </div>

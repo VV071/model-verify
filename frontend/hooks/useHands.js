@@ -273,10 +273,11 @@ export default function useHands({onResults} = {}){
     }
   },[onResults])
 
-  // capture function returns current embedding if inside and stable (caller decides)
+  // capture function returns current landmarks (array of {x,y,z}) if inside and stable
+  // the backend expects landmarks (points) to store and verify palm data
   const captureEmbedding = useCallback(()=>{
-    return isInside ? embedding : null
-  },[embedding, isInside])
+    return isInside ? landmarks : null
+  },[landmarks, isInside])
 
   // storage helpers
   const saveToLocal = useCallback((dataObj)=>{
